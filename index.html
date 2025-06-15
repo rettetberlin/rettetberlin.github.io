@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>#rettetBerlin - The Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/skeleton.css">
+  <script type="text/javascript" src ="./phaser.min.js"></script>
+  <script src="./phaser-input.min.js"></script>
+  <script src="./phaser.map"></script>
+  <style>
+  body {
+    text-align: center;
+  }
+
+  h1{
+    font-family: Georgia, serif;
+    font-weight: bold;
+    color: #e30513;
+    text-shadow: 4px 4px 5px grey;
+  }
+
+  div.jusobutton{
+    background-color: #e30513;
+    font-family: Georgia, serif;
+    font-weight: bold;
+    color: #FFFFFF;
+    text-decoration: none;
+    font-size: 1.3em;
+    margin: 0.1em;
+    padding: 0.1em;
+    text-decoration-color: transparent;
+    -ms-transform: skewY(354deg); /* IE 9 */
+    -webkit-transform: skewY(354deg); /* Safari */
+    transform: skewY(354deg); /* Standard syntax */
+    box-shadow: 4px 4px 5px grey;
+    min-height: 2em;
+  }
+  div.jusobutton:hover{
+    background-color: #94140d;
+  }
+  div.mintbg{
+    background-color: #297b79;
+  }
+
+  div.mintbg:hover{
+    background-color: #2f4851;
+  }
+  a {
+    text-decoration: none;
+  }
+  div#highscoreForm{
+    box-shadow: 4px 4px 5px grey;
+    padding: 0.3em;
+    display: inline-block;
+    position: absolute;
+    left:200;
+    z-index: 10;
+    background-color: #FFFFFF;
+    visibility: hidden;
+  }
+  canvas {   display : block;   margin : auto; box-shadow: 4px 4px 5px grey;}
+  </style>
+
+</head>
+<body>
+
+  <div id="highscoreForm">
+    Name:<br>
+    <input type="text" id="nameField"><br>
+    <input type="button" value="Submit" onClick="sendHighscoreData()">
+  </div>
+  <div class="container">
+    <!--<h1>#rettetBerlin</h1>-->
+    <div class="row">
+
+      <div id="gameContainer"></div>
+
+    </div>
+    <br><br>
+    <div class="row">
+      <div class="four columns">
+        <a href="assets/Help.png" target="_blank"><div class="jusobutton">Spielhilfe: Allgemein</div></a>
+      </div>
+      <div class="four columns">
+        <a href="Gegnertypen.png" target="_blank"><div class="jusobutton">Spielhilfe: Gegner*innen</div></a>
+      </div>
+      <div class="four columns">
+        <a href="./bestenliste" target="_blank"><div class="jusobutton">Bestenliste</div></a>
+      </div>
+
+
+
+    </div>
+    <br><br>
+    <div class="row">
+
+      <div class="four columns">
+        <a href="https://twitter.com/hashtag/rettetberlin" target="_blank"><div class="jusobutton">#rettetBerlin auf Twitter</div></a>
+      </div>
+      <div class="four columns">
+        <a href="https://www.facebook.com/hashtag/rettetberlin" target="_blank"><div class="jusobutton">#rettetBerlin auf Facebook</div></a>
+      </div>
+      <div class="four columns">
+        <a href="http://www.rettetberlin.de" target="_blank">
+          <div class="jusobutton">
+            rettetberlin.de
+          </div>
+        </a>
+      </div>
+    </div>
+    <br><br>
+    <div class="row">
+      <div class="four columns">
+        <a href="http://www.jusos.de/sites/default/files/material_files/Argumente%20gegen%20Rechts.pdf" target="_blank"><div class="jusobutton mintbg">Argumente gegen Rechts</div></a>
+      </div>
+      <div class="four columns">
+        <a href="https://www.jusos-sz.de/impressum/" target="_blank"><div class="jusobutton">Impressum und Datenschutz</div></a>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script type="text/javascript">
+  var game = new Phaser.Game(800,600, Phaser.AUTO, 'gameContainer', {
+    preload: preload, create: create, update: update
+  });
+
+  var plateGroup;
+  var monsterGroup;
+  var projektilGroup;
+  var rainGroup;
+  var monsterTimer;
+  var plantTimer;
+  var fireTimer;
+  var plantGroup;
+  var prellbock;
+  var ziel;
+  var points;
+  var text;
+  var monstersPerRound = 20;
+  var monsterAmount = monstersPerRound;
+  var monsterTimespan = 9000;
+  var plantTimespan = 4400;
+  var monsterSpeed = 10;
+  var button;
+  var round = 0;
+  var bgAnimGroup;
+  var musikemitter;
+  var plantBalance = 0;
+  var buttonGroup;
+  var highscoreGroup;
+  var lastPlant = game.rnd.pick(["unicorn","heart"]);
+  var nameinput;
+  var highscoreText;
+  var submittedThisRound = false;
+  var insertedName;
+  var saveToHighscore = false;
+  Phaser.Device.whenReady(function(){
+    game.add.plugin(Fabrique.Plugins.InputField);
+  });
+
+  function preload(){
+    game.load.image('ziel','assets/Ziel.png');
+
+    game.load.spritesheet('storch', 'assets/Storch_spritesheet.png',80,100);
+    game.load.spritesheet('pickelhaube', 'assets/Pickelhaube_spritesheet.png', 80,100);
+    game.load.spritesheet('fahnentraeger', 'assets/Fahnentraeger_spritesheet.png', 80,100);
+    game.load.spritesheet('springer', 'assets/Springer_spritesheet.png', 90,110);
+
+    game.load.image('heart', 'assets/Heart.png');
+    game.load.image('heartbroken', 'assets/Heart_broken.png');
+    game.load.image('heartbroken2', 'assets/Heart_broken2.png');
+
+    game.load.spritesheet('unicorn', 'assets/Unicorn_spritesheet.png', 70, 90, 3);
+    game.load.spritesheet('notensheet', 'assets/Notensheet.png', 50,50,4);
+    game.load.image('projektil', 'assets/Projektil.png');
+
+    game.load.spritesheet('splatter', 'assets/Splatter_spritesheet.png', 40,40);
+    game.load.spritesheet('victory', 'assets/Victory_spritesheet.png',610,262);
+
+
+    game.load.spritesheet('defeat', 'assets/Defeat_spritesheet.png',600,220,-1,0,5);
+    game.load.image('bg', 'assets/JusoBG.png');
+    game.load.image('prellbock', 'assets/Prellbock.png');
+    game.load.image('dust', 'assets/Dust.png');
+    game.load.spritesheet('people','assets/Party.png',110,100);
+    game.load.image('balls', 'assets/Ballsheet.png');
+    game.load.image('help', 'assets/Help.png')
+    game.load.image('helpnazischaufel', 'assets/HelpNaziSchaufel.png');
+    game.load.spritesheet('regen','assets/Regen_spritesheet.png',100,50);
+    game.load.image('wolken','assets/Wolken.png');
+    game.load.image('redbg','assets/Redbg.png');
+    game.load.spritesheet('linkargurechts','assets/LinkArguRechts_spritesheet.png',700,180,-1,0,5);
+    game.load.spritesheet('okbutton','assets/okbutton_spritesheet.png',150,57);
+    game.load.spritesheet('fontaene','assets/Brunnen_spritesheet.png',60,60);
+    game.load.spritesheet('bestenlistebutton','assets/bestenlistebutton_spritesheet.png',200,91);
+    game.load.spritesheet('fertigbutton','assets/Fertig_spritesheet.png',150,57);
+
+  }
+  function create(){
+
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+    game.stage.backgroundColor = "#FFFFFF";
+    ziel = game.add.sprite(0,0,'ziel');
+
+    plateGroup = game.add.group();
+    bgAnimGroup  = game.add.group();
+    text = game.add.text(388, 540, ""+round, { font: "40px Comic Sans MS cursive", fill: "#FFFFFF", align: "left" });
+    monsterGroup = game.add.physicsGroup(Phaser.Physics.ARCADE);
+    plantGroup = game.add.physicsGroup(Phaser.Physics.ARCADE);
+    projektilGroup = game.add.physicsGroup(Phaser.Physics.ARCADE);
+    rainGroup = game.add.group();
+    buttonGroup = game.add.group();
+    highscoreGroup = game.add.group();
+
+
+    prellbock = game.add.sprite(150, 0, 'prellbock');
+    game.physics.arcade.enable(prellbock);
+    prellbock.body.immovable = true;
+    game.physics.arcade.enable(ziel);
+    ziel.body.immovable = true;
+    points = 0;
+
+
+
+    plateGroup.create(0,0, 'bg');
+    var fontaene = plateGroup.create(275,283,'fontaene');
+    fontaene.animations.add('watering');
+    fontaene.animations.play('watering',4,true);
+    fontaene.scale.setTo(0.5,0.6);
+
+    //  Create our Timer
+    monsterTimer = game.time.create(false);
+    plantTimer = game.time.create(false);
+    fireTimer = game.time.create(false);
+    //  Set a TimerEvent to occur after 2 seconds
+    monsterTimer.loop(monsterTimespan, spawnMonster, this);
+    plantTimer.loop(plantTimespan, spawnPlant, this);
+    fireTimer.loop(6000, plantsFire, this);
+
+
+
+
+
+
+    var helpbutton = game.add.button(0,0,'help', showHighscoreInputFields, this);
+    buttonGroup.add(helpbutton);
+  }
+
+  function startGame(){
+    buttonGroup.removeAll();
+
+    //  Start the timer running - this is important!
+    //  It won't start automatically, allowing you to hook it to button events and the like.
+    monsterTimer.start();
+    plantTimer.start();
+    fireTimer.start();
+
+    //background animations
+
+
+    var rainCoordinates = [{x: 712, y:150}, {x: 713, y:210}, {x: 710, y:302}, {x: 730, y:369}, {x: 710, y:425}];
+    for (var i = 0; i < rainCoordinates.length; i++) {
+      var x = rainCoordinates[i].x;
+      var y = rainCoordinates[i].y;
+      var rain = game.add.sprite(x,y,'regen');
+      rain.animations.add('rain',[0,1,2,3,4,5,6]);
+      rain.animations.play('rain', 3, true);
+      rainGroup.add(rain);
+
+    }
+    game.add.image(0,0,'wolken');
+
+
+
+    partyDance();
+  }
+
+  function partyDance(){
+    var people2 = bgAnimGroup.create(22,144,'people',1);
+    var people = bgAnimGroup.create(20,162,'people',0);
+
+    game.add.tween(people).to({x: people.x + 3}, 300, Phaser.Easing.Bounce.InOut, true, 300, true).loop(true);
+    game.add.tween(people2).to({y: people2.y + 3}, 350, Phaser.Easing.Bounce.InOut, true, 500, true).loop(true);
+
+    musikemitter = game.add.emitter(0,0, 5);
+    musikemitter.makeParticles('notensheet',[0,1,2,3]);
+    musikemitter.gravity = 0;
+    musikemitter.x = 80;
+    musikemitter.y = 160;
+    musikemitter.maxParticleSpeed.set(0,0);
+    musikemitter.maxRotation = 2;
+    musikemitter.setScale(0.9, 1, 0.9, 1, 9000);
+    musikemitter.start(false, 5000, 2400);
+    var balls = bgAnimGroup.create(34,379,'balls');
+
+    game.physics.arcade.enable(balls);
+    balls.body.angularVelocity = 70;
+    balls.anchor.x = 0.5;
+    balls.anchor.y = 0.5;
+
+
+  }
+
+  function partyStop(){
+    bgAnimGroup.removeAll();
+    musikemitter.kill();
+    musikemitter.removeAll();
+  }
+
+  function update(){
+
+    movePlants();
+    game.physics.arcade.collide(monsterGroup, plantGroup, plantMonsterCollissionHandler, null, this);
+    game.physics.arcade.overlap(ziel, monsterGroup, zielMonsterHandler, null, this);
+    game.physics.arcade.collide(projektilGroup, monsterGroup, projektilMonsterCollissionHandler, null, this);
+  }
+
+  function spawnMonster(){
+    var i = Math.floor(Math.random() * (5 - 1 +1)) + 0
+
+    //var arry = ["storch", "pickelhaube", "fahnentraeger"];
+    var arry = ['storch','fahnentraeger', 'pickelhaube'];
+    var monsterString;
+    if(round >= 1 && game.rnd.between(0,100)>82){
+      monsterString = "springer";
+    }else{
+      monsterString  = game.rnd.pick(arry);
+    }
+
+    //console.log("Spawn: " + i + " " + monsterString );
+    var monster = monsterGroup.create(750, 149+i*82, monsterString, 0);
+    monsterGroup.forEachAlive(function(m){
+      if(monster.x == m.x && monster.y==m.y){
+        monster.x + 40;
+      }
+    });
+
+    if(monsterString != "springer"){
+      var attackanim = monster.animations.add('attack',[2,3,4,3]);
+      attackanim.onComplete.add(monsterWalkAgain, this);
+      monster.animations.add('walk',[0,1,2,1]);
+      monster.animations.play('walk', 2, true);
+    }
+    if(monsterString == "springer"){
+
+      monster.remainingJumps = 1;
+      var attackanim = monster.animations.add('attack',[1,3,4,3]);
+      attackanim.onComplete.add(monsterWalkAgain, this);
+      var diganim = monster.animations.add('dig',[8,9,10,11,12,13,14,15,16,17,18,19,20,21]);
+      diganim.onComplete.add(digOut, this);
+      var digOutanim = monster.animations.add('diggingOut',[21,20,19,18,17,16,15,14,13,12,11,10,9,8]);
+      digOutanim.onComplete.add(springerWalkAgain, this);
+      monster.animations.add('walk',[0,1,2,1]);
+      monster.animations.add('walkShovel',[5,6,7,6]);
+      monster.animations.play('walkShovel', 2, true);
+    }
+
+    if(monsterString=="pickelhaube"){
+      monster.health = 120;
+    }else{
+      monster.health = 100;
+    }
+    monster.body.velocity.set(-monsterSpeed,0);
+
+    monster.body.setSize(2, 50 ,30,40);
+    monster.anchor.x = 0.5;
+    monster.anchor.y = 0.5;
+    monster.name = monsterString;
+
+
+
+    monsterAmount--;
+    if (monsterAmount <= 0){
+      monsterTimer.stop();
+    }else{
+      if (game.rnd.between(0, 100) < 10){
+        spawnMonster();
+      }
+    }
+
+    /*
+    // showing randomly a speechbubble
+    if(game.rnd.between(0, 100) < 95){
+    var speechtimer = game.time.create(false);
+    speechtimer.add(game.rnd.between(1000, 5000), showBubble, monster, monster);
+    speechtimer.start();
+  }*/
+
+}
+
+function showBubble(monster){
+  var bubble = game.make.sprite(monster.x-20, monster.y-20, 'mausgerutscht');
+  monster.addChild(game.make.sprite(monster.x-20, monster.y-20, 'mausgerutscht'));
+
+  console.log("Speechbubble")
+}
+
+function spawnPlant(){
+  var arry = ["heart", "unicorn"];
+
+  var random = game.rnd.between(0,100);
+
+  var plantString;
+  if(random > 50+plantBalance){
+    plantBalance += 12;
+    plantString = lastPlant;
+  }else {
+    plantBalance = 0;
+    if(lastPlant == "heart"){
+      plantString = "unicorn"
+    }else{
+      plantString = "heart";
+    }
+  }
+
+
+
+  var plant;
+  if(plantString == "heart"){
+    plant = plantGroup.create(870, 0, plantString);
+  }else{
+    plant = plantGroup.create(870, 0, plantString, 0);
+    plant.animations.add('fire', [0,1,2,1,0], 5);
+  }
+
+  plant.body.velocity.set(-50,0);
+  plant.inputEnabled = true;
+  plant.input.enableDrag(true);
+  plant.input.dragFromCenter = true;
+  plant.input.enableSnap(92, 82, true, true);
+  plant.input.snapOffsetX = 150;
+  plant.input.snapOffsetY = 120;
+  plant.input.boundsRect  = new Phaser.Rectangle(150,120, 552, 410 )
+  plant.events.onInputDown.add(plantClickListener, this);
+  plant.events.onDragStop.add(onDragStop, this);
+  plant.events.onDragStart.add(onDragStart, this);
+  plant.health = 100;
+  plant.name = plantString;
+  if(plantString == "heart"){
+    plant.health *= 4;
+  }
+}
+
+
+function movePlants(){
+
+  game.physics.arcade.collide(plantGroup);
+  game.physics.arcade.collide(prellbock, plantGroup, plantCollissionHandler, null, this);
+}
+
+function plantCollissionHandler(item){
+
+}
+
+function plantClickListener(item){
+  item.body.velocity.set(0,0);
+  item.body.immovable = true;
+  item.body.moves = false;
+}
+
+function onDragStart(item, pointer){
+  item.body.enable = false;
+}
+
+function onDragStop(item, pointer){
+  var reset = false;
+  item.body.enable = true;
+  plantGroup.forEachAlive(function(plant){
+    if(item != plant && item.x == plant.x && item.y == plant.y){
+      item.x = 770;
+      item.y = 0;
+      //game.add.tween(item).to( { x: prellbock.x + 91 }, 500, Phaser.Easing.Linear.None, true);
+      item.body.immovable = false;
+      item.body.moves = true;
+      item.body.velocity.set(-50,0);
+      reset = true;
+
+      var emitter = game.add.emitter(0,0, 30);
+      emitter.makeParticles('dust');
+      emitter.gravity = 1;
+      emitter.x = plant.centerX;
+      emitter.y = plant.centerY;
+      emitter.maxParticleSpeed.set(3,3);
+      emitter.setScale(0.3, 1.4, 0.3, 1.4, 600);
+      emitter.start(true, 700, null, 10);
+
+      var emitter2 = game.add.emitter(0,0, 30);
+      emitter2.makeParticles('dust');
+      emitter2.gravity = 20;
+      emitter2.x = item.centerX;
+      emitter2.y = item.centerY;
+      emitter2.maxParticleSpeed.set(3,3);
+      emitter2.setScale(0.3, 1.4, 0.3, 1.4, 700);
+      emitter2.start(true, 900, null, 10);
+    }
+  });
+
+  if(!reset){
+    item.inputEnabled = false;
+
+  }
+
+}
+
+function plantMonsterCollissionHandler(monster, plant){
+  if(monster.name == "springer" && monster.remainingJumps > 0){
+    //var tween = game.add.tween(monster).to( { x: monster.x-80 }, 500, Phaser.Easing.Exponential.In, true);
+    monster.play('dig',9);
+    monster.body.enable = false;
+    monster.remainingJumps -= 1;
+  }else{
+    plant.health -= 1;
+    if (plant.health == 250){
+      plant.loadTexture('heartbroken');
+    }
+    if (plant.health == 130){
+      plant.loadTexture('heartbroken2');
+    }
+    if(plant.health < 0){
+      plant.kill();
+
+    }
+    if(monster.animations.currentAnim == null || monster.animations.name == "walk"){
+      monster.animations.play("attack",2);
+    }
+    monster.body.velocity.set(-monsterSpeed,0);
+    //console.log(plant.health);
+  }
+}
+
+function monsterWalkAgain(monster, animation){
+  monster.play("walk",2);
+}
+
+function springerWalkAgain(monster, animation){
+  monster.play("walk",2,true);
+}
+
+function digOut(monster, animation){
+  monster.x -= 78;
+  monster.play("diggingOut",11);
+  monster.body.enable = true;
+  monster.body.velocity.set(-monsterSpeed,0);
+}
+
+function zielMonsterHandler(ziel, monster){
+  points++;
+
+
+  monster.kill();
+
+  if (points > 0){
+    gameFinished();
+  }
+}
+
+function plantsFire(){
+
+  plantGroup.forEachAlive(function(plant){
+
+    if(plant.inputEnabled == false && plant.name == "unicorn"){
+
+      var projektil = projektilGroup.create(plant.centerX+25, plant.centerY-2, 'projektil');
+      projektil.body.velocity.set(110,0);
+      projektil.body.mass = 0;
+      plant.animations.play('fire');
+      projektil.body.angularVelocity = 300;
+      //console.log("Animation: " + plant.animations.currentAnim)
+      projektil.anchor.x = 0.5;
+      projektil.anchor.y = 0.5;
+    }
+  })
+}
+
+function projektilMonsterCollissionHandler(projektil, monster){
+  projektil.kill();
+  monster.health -= 18;
+  monster.body.velocity.set(-monsterSpeed,0);
+  //console.log("Health: " + monster.health);
+  game.add.tween(monster).from( { tint: 0xFF0000 }, 400, Phaser.Easing.Bounce.In, true);
+
+  if(monster.health <= 0){
+
+    /*var emitter = game.add.emitter(0,0, 10);
+    emitter.makeParticles('splatter',[0,1,2]);
+    emitter.gravity = 30;
+    emitter.x = monster.centerX;
+    emitter.y = monster.centerY;
+    emitter.setScale(0.2, 0.8, 0.2, 0.8, 1000);
+    emitter.start(true, 850, null, 8);*/
+    monster.body.enable = false;
+
+    var tween = game.add.tween(monster).to( { y: monster.y-620 }, 900, Phaser.Easing.Exponential.In, true);
+    game.add.tween(monster).to( { angle: game.rnd.pick([-600,-360,-200,200,390,601,500]) }, 900, Phaser.Easing.Quadratic.In, true);
+    tween.onComplete.add(onCompleteMonsterTween, monster, monster);
+    //console.log("Monsters alive: " + monsterGroup.total);
+
+  }
+}
+
+function onCompleteMonsterTween(monster) {
+
+  monster.kill();
+  if(monsterGroup.total <= 0 && monsterAmount <= 0){
+    gameFinished();
+  }
+
+}
+
+function render(){
+  monsterGroup.forEachAlive(function(monster){
+    game.debug.body(monster);
+  })
+  plantGroup.forEachAlive(function(projektil){
+    game.debug.body(projektil);
+  })
+}
+
+function gameFinished(){
+  monsterTimer.pause();
+  plantTimer.pause();
+  fireTimer.pause();
+  monsterGroup.removeAll();
+  if(points > 0){
+    //defeat
+    round = 0;
+    button = game.add.button(100,100,'defeat', gameRestart, this, 1, 0, 1);
+    var arguRechtsButton = game.add.button(50,320, 'linkargurechts', arguRechtsOnClick,this, 1,0,1);
+    buttonGroup.add(arguRechtsButton);
+    partyStop();
+  }else{
+    round++;
+    //victory
+    sendHighscoreDataCanvas();
+    if(round == 1){
+      button = game.add.button(100,120,'victory', showNaziSchaufelHelp, this,1,0,1);
+      buttonGroup.add(button);
+    }else{
+      button = game.add.button(100,120,'victory', gameRestart, this,1,0,1);
+      buttonGroup.add(button);
+    }
+    var arguRechtsButton = game.add.button(50,390, 'linkargurechts', arguRechtsOnClick,this, 1,0,1);
+    buttonGroup.add(arguRechtsButton);
+
+  }
+  text.text = ""+round;
+
+  points = 0;
+}
+
+function arguRechtsOnClick(){
+  window.open("http://www.jusos.de/sites/default/files/material_files/Argumente%20gegen%20Rechts.pdf", "_blank");
+}
+
+function showNaziSchaufelHelp(){
+
+  buttonGroup.removeAll();
+  var schaufelbutton = game.add.button(150,100, 'helpnazischaufel', gameRestart);
+  buttonGroup.add(schaufelbutton);
+}
+
+function gameRestart(){
+  submittedThisRound = false;
+  plantGroup.removeAll();
+  monsterGroup.removeAll();
+  monsterAmount = monstersPerRound;
+
+  monsterTimer.stop();
+  plantTimer.stop();
+  fireTimer.stop();
+  monsterTimer = game.time.create(false);
+  plantTimer = game.time.create(false);
+  fireTimer = game.time.create(false);
+  //  Set a TimerEvent to occur after 2 seconds
+  monsterTimespan = monsterTimespan;
+  monsterTimer.loop(monsterTimespan, spawnMonster, this);
+  //plantTimer.loop(plantTimespan+Math.sqrt(round)*200, spawnPlant, this);
+  plantTimer.loop(plantTimespan+(1500-1400*Math.exp(-0.06*round)), spawnPlant, this);
+  fireTimer.loop(6000, plantsFire, this);
+  button.destroy();
+  buttonGroup.removeAll();
+  monsterTimer.start();
+  plantTimer.start();
+  fireTimer.start();
+
+  //background animations
+  if(round == 0){
+    // only if the previous round was lost:
+    partyDance();
+  }
+}
+
+function showHighscoreInputFields(){
+  buttonGroup.removeAll();
+  var redbg = game.add.sprite(0,0,'redbg');
+  redbg.inputEnabled = true;
+  /*nameinput = game.add.inputField(269, 265, {
+    font: '22px Arial',
+    fill: '#212121',
+    fontWeight: 'bold',
+    width: 250,
+    height: 24,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 6,
+    placeHolder: 'z.B. Einhornpower'
+  });*/
+
+
+  //var okbutton = game.add.button(325,316,'okbutton',saveHighscoreName,this,1,0,1);
+  var fertigbutton = game.add.button(325,376,'fertigbutton', closeHighscoreInputFields, this,1,0,1);
+  highscoreGroup.add(redbg);
+  //highscoreGroup.add(okbutton);
+  //highscoreGroup.add(nameinput);
+  highscoreGroup.add(fertigbutton);
+  highscoreText = game.add.text(290,290,"(Die Bestenliste wurde 2016 eingefroren. Eine Eintragung ist nicht mehr möglich.)",{font: "16px Georgia", fill: "#fff",wordWrap: true, wordWrapWidth: 250});
+  //highscoreText.setTextBounds(300,415,600,490);
+  highscoreGroup.add(highscoreText);
+}
+
+function closeHighscoreInputFields(){
+  highscoreGroup.removeAll();
+  startGame();
+}
+
+function saveHighscoreName(){
+  insertedName = nameinput.value;
+  saveToHighscore = true;
+  closeHighscoreInputFields();
+}
+
+function sendHighscoreDataCanvas(){
+
+  var key = "dontBeAn1d10t_please";
+
+  if(insertedName.length > 0 && saveToHighscore){
+    if(submittedThisRound){
+      highscoreText.text = "Du darfst dich erst nächste Runde wieder eintragen";
+    }else{
+      var xhttp = new XMLHttpRequest();
+      xhttp.open("POST", "./bestenliste/insert.php", true);
+      xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      xhttp.send("name="+insertedName+"&rounds="+round+"&key="+key+"&add="+1);
+      xhttp.onreadystatechange = function () {
+        var DONE = 4; // readyState 4 means the request is done.
+        var OK = 200; // status 200 is a successful return.
+        if (xhttp.readyState == DONE) {
+          if (xhttp.status == OK){
+      //    console.log(xhttp.responseText);
+
+          }
+        } else {
+          console.log('Error: ' + xhttp.status + " Readystate " + xhttp.readyState); // An error occurred during the request.
+
+        }
+      };
+    }
+  }
+
+}
+
+
+</script>
+</body>
+</html>
